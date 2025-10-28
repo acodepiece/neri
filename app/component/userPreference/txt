@@ -1,0 +1,331 @@
+import React, { useState } from 'react';
+
+export default function HabitDetails() {
+  // Simulating the 2 selected habits from previous page
+  const [selectedFromPrevious] = useState([1, 2]); // Productivity and Workout
+  const [expandedCategories, setExpandedCategories] = useState([1, 2]); // Open the selected ones by default
+  const [selectedTasks, setSelectedTasks] = useState([]);
+
+  const habitCategories = [
+    {
+      id: 1,
+      name: 'Productivity',
+      icon: '📊',
+      color: 'bg-blue-50',
+      borderColor: 'border-blue-300',
+      accentColor: 'bg-blue-500',
+      tasks: [
+        { id: 'p1', title: 'Deep work for 2 hours', duration: '120 min' },
+        { id: 'p2', title: 'Complete 3 important tasks', duration: '90 min' },
+        { id: 'p3', title: 'Review and plan tomorrow', duration: '15 min' },
+        { id: 'p4', title: 'No social media before noon', duration: 'All day' },
+        { id: 'p5', title: 'Time blocking schedule', duration: '30 min' }
+      ]
+    },
+    {
+      id: 2,
+      name: 'Workout',
+      icon: '💪',
+      color: 'bg-red-50',
+      borderColor: 'border-red-300',
+      accentColor: 'bg-red-500',
+      tasks: [
+        { id: 'w1', title: 'Run for 30 minutes', duration: '30 min' },
+        { id: 'w2', title: 'Strength training', duration: '45 min' },
+        { id: 'w3', title: '10,000 steps daily', duration: 'All day' },
+        { id: 'w4', title: 'Yoga or stretching', duration: '20 min' },
+        { id: 'w5', title: 'HIIT workout', duration: '25 min' }
+      ]
+    },
+    {
+      id: 3,
+      name: 'Reading',
+      icon: '📚',
+      color: 'bg-green-50',
+      borderColor: 'border-green-300',
+      accentColor: 'bg-green-500',
+      tasks: [
+        { id: 'r1', title: 'Read for 30 minutes', duration: '30 min' },
+        { id: 'r2', title: 'Finish one chapter', duration: '45 min' },
+        { id: 'r3', title: 'Read before bed', duration: '20 min' },
+        { id: 'r4', title: 'Audiobook during commute', duration: '30 min' },
+        { id: 'r5', title: 'Take reading notes', duration: '15 min' }
+      ]
+    },
+    {
+      id: 4,
+      name: 'Meditation',
+      icon: '🧘',
+      color: 'bg-purple-50',
+      borderColor: 'border-purple-300',
+      accentColor: 'bg-purple-500',
+      tasks: [
+        { id: 'm1', title: 'Morning meditation', duration: '10 min' },
+        { id: 'm2', title: 'Breathing exercises', duration: '5 min' },
+        { id: 'm3', title: 'Guided meditation', duration: '15 min' },
+        { id: 'm4', title: 'Mindful walking', duration: '20 min' },
+        { id: 'm5', title: 'Evening reflection', duration: '10 min' }
+      ]
+    },
+    {
+      id: 5,
+      name: 'Healthy Eating',
+      icon: '🥗',
+      color: 'bg-yellow-50',
+      borderColor: 'border-yellow-300',
+      accentColor: 'bg-yellow-500',
+      tasks: [
+        { id: 'h1', title: 'Drink 8 glasses of water', duration: 'All day' },
+        { id: 'h2', title: 'Eat 5 servings of vegetables', duration: 'All day' },
+        { id: 'h3', title: 'No processed sugar', duration: 'All day' },
+        { id: 'h4', title: 'Meal prep for the week', duration: '120 min' },
+        { id: 'h5', title: 'Healthy breakfast', duration: '20 min' }
+      ]
+    },
+    {
+      id: 6,
+      name: 'Sleep Schedule',
+      icon: '😴',
+      color: 'bg-indigo-50',
+      borderColor: 'border-indigo-300',
+      accentColor: 'bg-indigo-500',
+      tasks: [
+        { id: 's1', title: 'Sleep by 10 PM', duration: '8 hours' },
+        { id: 's2', title: 'No screens 1 hour before bed', duration: '60 min' },
+        { id: 's3', title: 'Wake up at 6 AM', duration: '---' },
+        { id: 's4', title: 'Consistent sleep schedule', duration: 'All day' },
+        { id: 's5', title: '7-8 hours of sleep', duration: '8 hours' }
+      ]
+    }
+  ];
+
+  const toggleCategory = (categoryId) => {
+    setExpandedCategories(prev => 
+      prev.includes(categoryId)
+        ? prev.filter(id => id !== categoryId)
+        : [...prev, categoryId]
+    );
+  };
+
+  const toggleTask = (taskId) => {
+    setSelectedTasks(prev =>
+      prev.includes(taskId)
+        ? prev.filter(id => id !== taskId)
+        : [...prev, taskId]
+    );
+  };
+
+  const handleContinue = () => {
+    alert(`You selected ${selectedTasks.length} tasks to track!`);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-purple-50 pb-32">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-white shadow-sm">
+        <div className="max-w-4xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between mb-3">
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-800">
+              Choose Your Habits
+            </h1>
+            <div className="bg-purple-100 px-3 py-1 rounded-full">
+              <span className="text-sm font-semibold text-purple-600">
+                {selectedTasks.length} selected
+              </span>
+            </div>
+          </div>
+          
+          {/* Horizontal Category Buttons */}
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {habitCategories.map((category) => {
+              const isSelected = selectedFromPrevious.includes(category.id);
+              const isExpanded = expandedCategories.includes(category.id);
+              
+              return (
+                <button
+                  key={category.id}
+                  onClick={() => toggleCategory(category.id)}
+                  className={`
+                    flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap
+                    transition-all duration-300 border-2 flex-shrink-0
+                    ${isExpanded
+                      ? `${category.color} ${category.borderColor} shadow-md`
+                      : 'bg-white border-gray-200 hover:border-gray-300'
+                    }
+                    ${isSelected ? 'ring-2 ring-purple-400 ring-offset-2' : ''}
+                  `}
+                >
+                  <span className="text-xl">{category.icon}</span>
+                  <span className="font-medium text-sm text-gray-700">
+                    {category.name}
+                  </span>
+                  {isSelected && (
+                    <span className="bg-purple-500 text-white text-xs px-1.5 py-0.5 rounded">
+                      ★
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Expandable Categories */}
+      <div className="max-w-4xl mx-auto px-4 py-6 space-y-3">
+        {habitCategories.map((category) => {
+          const isExpanded = expandedCategories.includes(category.id);
+          const isSelected = selectedFromPrevious.includes(category.id);
+          
+          return (
+            <div
+              key={category.id}
+              className={`
+                bg-white rounded-2xl shadow-sm border-2 overflow-hidden
+                transition-all duration-300
+                ${isExpanded ? category.borderColor : 'border-gray-200'}
+                ${isSelected ? 'ring-2 ring-purple-300' : ''}
+              `}
+            >
+              {/* Category Header */}
+              <button
+                onClick={() => toggleCategory(category.id)}
+                className="w-full px-4 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">{category.icon}</span>
+                  <div className="text-left">
+                    <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                      {category.name}
+                      {isSelected && (
+                        <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">
+                          Selected
+                        </span>
+                      )}
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      {category.tasks.length} habits available
+                    </p>
+                  </div>
+                </div>
+                
+                <svg
+                  className={`w-6 h-6 text-gray-400 transition-transform duration-300 ${
+                    isExpanded ? 'rotate-180' : ''
+                  }`}
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </button>
+
+              {/* Expandable Task List */}
+              {isExpanded && (
+                <div className={`${category.color} px-4 pb-4 space-y-2`}>
+                  {category.tasks.map((task) => {
+                    const isTaskSelected = selectedTasks.includes(task.id);
+                    
+                    return (
+                      <div
+                        key={task.id}
+                        onClick={() => toggleTask(task.id)}
+                        className={`
+                          bg-white rounded-xl p-4 cursor-pointer
+                          transition-all duration-200 border-2
+                          ${isTaskSelected
+                            ? `${category.borderColor} shadow-md scale-[1.02]`
+                            : 'border-gray-100 hover:border-gray-200 hover:shadow-sm active:scale-[0.98]'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 flex-1">
+                            {/* Checkbox */}
+                            <div className={`
+                              w-6 h-6 rounded-lg border-2 flex items-center justify-center flex-shrink-0
+                              transition-all duration-200
+                              ${isTaskSelected
+                                ? `${category.accentColor} border-transparent`
+                                : 'bg-white border-gray-300'
+                              }
+                            `}>
+                              {isTaskSelected && (
+                                <svg
+                                  className="w-4 h-4 text-white"
+                                  fill="none"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth="3"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path d="M5 13l4 4L19 7"></path>
+                                </svg>
+                              )}
+                            </div>
+                            
+                            <div className="flex-1">
+                              <h4 className="font-semibold text-gray-800 text-sm md:text-base">
+                                {task.title}
+                              </h4>
+                            </div>
+                          </div>
+                          
+                          <span className="text-xs text-gray-500 font-medium ml-2 flex-shrink-0">
+                            {task.duration}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Fixed Bottom Button */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 md:p-6 shadow-2xl">
+        <div className="max-w-4xl mx-auto">
+          <button
+            onClick={handleContinue}
+            disabled={selectedTasks.length === 0}
+            className={`
+              w-full py-4 md:py-5 rounded-2xl font-bold text-base md:text-lg 
+              transition-all duration-300 flex items-center justify-center gap-2
+              ${selectedTasks.length > 0
+                ? 'bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg active:scale-98 hover:shadow-xl'
+                : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              }
+            `}
+          >
+            {selectedTasks.length > 0 ? (
+              <>
+                <span>Start Tracking ({selectedTasks.length} habits)</span>
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth="2.5"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path d="M9 5l7 7-7 7"></path>
+                </svg>
+              </>
+            ) : (
+              <span>Select habits to start tracking</span>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
