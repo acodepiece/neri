@@ -1,0 +1,116 @@
+
+SQLite Database Schema Setup - Habit Tracker App
+================================================
+
+📘 Overview
+This document describes how to set up and initialize the SQLite database used in the Habit Tracker app.
+It includes details about each table, relationships, and initialization steps.
+
+-------------------------------------------------
+1️⃣ Step 1 — Open or Create the Database
+-------------------------------------------------
+File: database.ts
+
+The database connection is opened using `expo-sqlite`.
+If it doesn't exist, a new one named 'habitstreak.db' will be created.
+
+Code:
+  db = await SQLite.openDatabaseAsync('habitstreak.db');
+
+-------------------------------------------------
+2️⃣ Step 2 — Initialize All Tables
+-------------------------------------------------
+Tables created:
+1. habits
+2. user_habits
+3. habit_logs
+4. streaks
+
+SQL Definitions:
+
+CREATE TABLE IF NOT EXISTS habits (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  description TEXT,
+  icon TEXT,
+  category_id INTEGER,
+  category_name TEXT
+);
+
+CREATE TABLE IF NOT EXISTS user_habits (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  habit_id TEXT NOT NULL,
+  date TEXT NOT NULL,
+  completed INTEGER DEFAULT 0,
+  UNIQUE(habit_id, date),
+  FOREIGN KEY (habit_id) REFERENCES habits(id)
+);
+
+CREATE TABLE IF NOT EXISTS habit_logs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  habit_id TEXT,
+  date TEXT,
+  completed INTEGER DEFAULT 0,
+  FOREIGN KEY (habit_id) REFERENCES habits(id)
+);
+
+CREATE TABLE IF NOT EXISTS streaks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  habit_id TEXT,
+  current_streak INTEGER DEFAULT 0,
+  last_completed_date TEXT,
+  FOREIGN KEY (habit_id) REFERENCES habits(id)
+);
+
+Indexes:
+  - idx_user_habits_date ON user_habits(date)
+  - idx_user_habits_habit_date ON user_habits(habit_id, date)
+
+-------------------------------------------------
+3️⃣ Step 3 — Insert Default Habits
+-------------------------------------------------
+Default habits are inserted from pre-defined `HABIT_CATEGORIES`.
+The code ensures that duplicates are not inserted using `SELECT id FROM habits WHERE id = ?`.
+
+-------------------------------------------------
+4️⃣ Step 4 — Store User Progress
+-------------------------------------------------
+User selections for a given date are saved in the `user_habits` table.
+Each habit has:
+  - habit_id
+  - date
+  - completed (0 or 1)
+
+Old entries for the same date are deleted before saving new ones.
+
+-------------------------------------------------
+5️⃣ Step 5 — Calculate Streaks
+-------------------------------------------------
+The streaks table keeps track of ongoing streaks per habit.
+Data is calculated based on consecutive days in `user_habits` where completed = 1.
+
+-------------------------------------------------
+6️⃣ Step 6 — Debug and Inspect Data
+-------------------------------------------------
+Helper methods included:
+  - showAllHabits()
+  - debugUserHabits()
+  - debugAllTables()
+
+You can run these functions to inspect all stored data in the SQLite database.
+
+-------------------------------------------------
+✅ Summary
+-------------------------------------------------
+✔ Database name: habitstreak.db
+✔ Tables: habits, user_habits, habit_logs, streaks
+✔ Relationships: habits → user_habits → streaks
+✔ Indexed for performance on date and habit_id
+✔ Safe async database operations used with expo-sqlite
+
+-------------------------------------------------
+📍 Author Notes
+-------------------------------------------------
+To view the database:
+  - Use an SQLite Viewer (Android/iOS: SQLite Viewer App)
+  - Or connect to the file directly on your device storage under Expo’s sandbox folder

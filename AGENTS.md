@@ -1,31 +1,27 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `app/` contains Expo Router screens; `_layout.tsx` defines navigation frames, and `(tabs)/` hosts bottom-tab scenes like `index.tsx` and `explore.tsx`.
-- `components/` holds reusable UI (for example `haptic-tab.tsx`, `parallax-scroll-view.tsx`) plus platform-specific widgets under `components/ui/`.
-- `hooks/` stores theme utilities (`use-theme-color.ts`), while shared palette config lives in `constants/theme.ts`.
-- Static assets (icons, illustrations, fonts) sit in `assets/`. Runtime configuration is managed through `app.json` and `expo-env.d.ts`.
-- Utility scripts reside in `scripts/`, with `reset-project.js` resetting the example boilerplate.
+- `app/` is the Expo Router entry point; `_layout.tsx` wires the navigation shell while route groups like `(tabs)/`, `(onboarding)/`, and `(profile)/` collect feature-specific screens.
+- Shared presentation lives in `components/` (UI primitives in `components/ui/`, interactions such as `haptic-tab.tsx` nearby) and theming helpers sit in `hooks/` plus `constants/theme.ts`.
+- State and persistence helpers (for example `utils/habit-storage.ts`) encapsulate AsyncStorage access; add new storage modules here and surface them through typed hooks.
+- Put images and fonts under `assets/`; environment metadata stays in `app.json`, Expo environment types in `expo-env.d.ts`, and maintenance scripts in `scripts/`.
 
 ## Build, Test, and Development Commands
-- `npm install` – install dependencies after cloning.
-- `npm start` or `npx expo start` – launch Expo Dev Tools with QR preview; append `--android`, `--ios`, or `--web` for platform targets.
-- `npm run android` / `npm run ios` – open the native emulator directly.
-- `npm run lint` – run ESLint (`eslint-config-expo`) to catch style and type issues before pushing.
-- `npm run reset-project` – archive the starter app into `app-example/` and create a fresh `app/` scaffold if you need a clean slate.
+- `npm install` syncs dependencies; re-run after pulling upstream changes.
+- `npm run start` (or `npx expo start`) launches Metro and Expo Dev Tools; append `--android`, `--ios`, or `--web` to target a platform directly.
+- `npm run android`, `npm run ios`, and `npm run web` open hot-reloading clients; confirm UI tweaks on at least one device per change.
+- `npm run lint` runs ESLint with `expo lint`; use `npm run lint -- --fix` before raising a PR. `npm run reset-project` restores a pristine Expo scaffold if the sample state becomes corrupted.
 
 ## Coding Style & Naming Conventions
-- TypeScript across the app; keep screens and components in `.tsx`.
-- Prefer function components with hooks over classes; export components as default when representing a route.
-- Use PascalCase for React components (`HabitCard.tsx`), camelCase for hooks (`useColorScheme.ts`), and kebab-case for asset filenames.
-- Follow 2-space indentation and align with ESLint autofix (`npx expo lint --fix`).
+- Write TypeScript with 2-space indentation, functional React components, and hooks for side effects; avoid class components.
+- Screens default-export a `PascalCase` component that matches the route segment (`HomeScreen`, `profile/settings` → `SettingsScreen`), while shared utilities stay camelCase.
+- Use the `@/` path alias defined in `tsconfig.json` instead of relative chains, and respect the rules in `eslint.config.js`.
 
 ## Testing Guidelines
-- Automated tests are not yet configured; rely on `npm run lint` and device smoke tests (`expo start --android` or `--ios`).
-- When adding tests, place co-located `*.test.tsx` files beside the component and adopt Jest with `@testing-library/react-native` for rendering checks.
-- Document manual test steps in the PR description until continuous testing is added.
+- Automated tests are not yet configured; pair `npm run lint` with manual verification on Android (`npm run android`) and iOS or web as appropriate.
+- When adding Jest or React Native Testing Library, colocate specs as `*.test.tsx`, extend `tsconfig.json` includes, and ensure new suites run via a future `npm test` script.
 
 ## Commit & Pull Request Guidelines
-- Write imperative commit messages (`Add streak badge component`) and keep the subject under 70 characters; the history currently follows the Expo scaffold convention.
-- Each PR should explain scope, link any GitHub issues (`Fixes #12`), and attach before/after screenshots for UI changes.
-- Request at least one reviewer, note any platform-specific considerations, and confirm linting/tests ran locally before requesting merge.
+- Follow the existing history by writing concise, imperative subjects under ~70 characters (e.g., `Add streak progress cards`) and group related changes into a single commit.
+- PRs should describe scope, list manual verification steps, link relevant issues (`Fixes #123`), and attach screenshots or recordings for visual updates.
+- Confirm linting (and any future tests) pass before requesting review and remove debugging artifacts prior to merge.

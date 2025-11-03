@@ -33,7 +33,7 @@ const mutedCheckBackground = '#FFFFFF';
 const mutedCheckBorder = '#E6E0DB';
 const mutedText = '#746E6A';
 
-export default function UserPreferenceHome() {
+export default function PlanSelectionScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
@@ -57,7 +57,7 @@ export default function UserPreferenceHome() {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']} mode="padding">
-      <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 24) }]}>
+      <View style={[styles.container, { paddingBottom: insets.bottom + 24 }]}>
         <ScrollView
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
@@ -90,9 +90,8 @@ export default function UserPreferenceHome() {
           style={styles.primaryButton}
           onPress={() => {
             const ids = Array.from(selectedIds);
-            console.log('Selected plan IDs:', ids);
             router.push({
-              pathname: '/component/userPreference/txt',
+              pathname: '/(onboarding)/user-preference/select-habits',
               params: { categories: JSON.stringify(ids) },
             });
           }}
@@ -169,6 +168,7 @@ const styles = StyleSheet.create({
     backgroundColor: surfaceColor,
     paddingHorizontal: 20,
     gap: 24,
+    paddingBottom: 24,
   },
   contentContainer: {
     paddingTop: 24,
