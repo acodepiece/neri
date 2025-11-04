@@ -145,7 +145,13 @@ export default function UserPreferenceScreen({
       );
 
       Alert.alert('Habits Saved', `You selected ${selectedCount} tasks to track!`);
-        router.replace({ pathname: '/(tabs)/(home)', params: { date: dateKey } });
+      router.push({
+        pathname: '/(onboarding)/notification-reminder',
+        params: {
+          date: dateKey,
+          selectionCount: String(selectedCount),
+        },
+      });
     } finally {
       setIsSaving(false);
     }

@@ -7,6 +7,7 @@ export default function OnboardingLayout() {
       initialRouteName="user-preference/select-habits"
     >
       <Stack.Screen name="user-preference/select-habits" />
+      <Stack.Screen name="notification-reminder/index" />
     </Stack>
   );
 }
