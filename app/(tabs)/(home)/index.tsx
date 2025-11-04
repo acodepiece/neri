@@ -426,7 +426,7 @@ export default function IndexScreen() {
 
       selectionRef.current = nextSelection;
 
-      saveHabitSelection(selectedDateKey, nextSelection).catch((error) => {
+      saveHabitSelection(selectedDateKey, nextSelection, { propagateToFuture: false }).catch((error) => {
         console.warn('Unable to persist habit selection update', error);
       });
     },
@@ -477,11 +477,15 @@ export default function IndexScreen() {
       console.log(`\n🔄 [TOGGLE] ${habitId} -> ${willBeCompleted ? 'completed' : 'uncompleted'}`);
 
       // Save the current state to database (including suggested habits)
-      saveHabitSelection(selectedDateKey, {
-        categories: selectionRef.current.categories,
-        tasks: selectionRef.current.tasks,
-        completed: Array.from(next),
-      })
+      saveHabitSelection(
+        selectedDateKey,
+        {
+          categories: selectionRef.current.categories,
+          tasks: selectionRef.current.tasks,
+          completed: Array.from(next),
+        },
+        { propagateToFuture: false },
+      )
         .then(async () => {
           console.log('  ✅ Saved successfully, recalculating streaks...');
           
@@ -513,11 +517,15 @@ export default function IndexScreen() {
         };
 
         // Save the updated state to database
-        saveHabitSelection(selectedDateKey, {
-          categories: selectionRef.current.categories,
-          tasks: next,
-          completed: selectionRef.current.completed,
-        }).catch((error) => {
+        saveHabitSelection(
+          selectedDateKey,
+          {
+            categories: selectionRef.current.categories,
+            tasks: next,
+            completed: selectionRef.current.completed,
+          },
+          { propagateToFuture: false },
+        ).catch((error) => {
           console.error('Failed to remove habit:', error);
         });
 

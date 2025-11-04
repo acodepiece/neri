@@ -39,6 +39,10 @@ export type HabitSelection = {
   completed?: string[];
 };
 
+export type SaveHabitSelectionOptions = {
+  propagateToFuture?: boolean;
+};
+
 async function syncFutureHabitSelections(
   database: SQLite.SQLiteDatabase,
   sourceDate: string,
@@ -234,7 +238,8 @@ export async function deleteCustomHabit(habitId: string): Promise<void> {
 // 📅 Save habit selection for a specific date
 export async function saveHabitSelection(
   dateKey: string,
-  selection: HabitSelection
+  selection: HabitSelection,
+  options: SaveHabitSelectionOptions = {},
 ): Promise<void> {
   try {
     const database = await getDatabase();
@@ -243,6 +248,8 @@ export async function saveHabitSelection(
       throw new Error('Database not initialized');
     }
     
+    const { propagateToFuture = false } = options;
+    
     const uniqueTasks = Array.from(new Set(selection.tasks));
     const completedSet = new Set(selection.completed ?? []);
 
@@ -250,6 +257,9 @@ export async function saveHabitSelection(
       tasks: uniqueTasks,
       completed: Array.from(completedSet)
     });
+    if (propagateToFuture) {
+      console.log('  🔁 Future propagation enabled');
+    }
 
     // Remove existing habits for this date
     await database.runAsync('DELETE FROM user_habits WHERE date = ?', [dateKey]);
@@ -265,7 +275,9 @@ export async function saveHabitSelection(
     }
     
     // Keep future days in sync with the latest selection template
-    await syncFutureHabitSelections(database, dateKey, uniqueTasks);
+    if (propagateToFuture) {
+      await syncFutureHabitSelections(database, dateKey, uniqueTasks);
+    }
 
     // Debug: Show what was saved
     await debugUserHabits(dateKey);
@@ -304,7 +316,7 @@ export async function loadHabitSelection(dateKey: string): Promise<HabitSelectio
 
         try {
           console.log(`  💾 Persisting ${suggestedTasks.length} suggested habits for ${dateKey}`);
-          await saveHabitSelection(dateKey, suggestedSelection);
+          await saveHabitSelection(dateKey, suggestedSelection, { propagateToFuture: false });
         } catch (persistError) {
           console.warn('  ⚠️ Unable to persist suggested habits automatically', persistError);
         }

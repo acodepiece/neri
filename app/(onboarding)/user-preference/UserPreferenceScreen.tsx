@@ -18,6 +18,7 @@ type HabitTask = {
   id: string;
   title: string;
   duration: string;
+  icon: string;
 };
 
 type HabitCategory = {
@@ -45,48 +46,19 @@ type FlattenedHabit = {
 export const HABIT_CATEGORIES: HabitCategory[] = [
   {
     id: 1,
-    name: 'Daily Focus',
-    icon: '🗓️',
-    palette: {
-      background: '#EEF2FF',
-      border: '#A5B4FC',
-      accent: '#6366F1',
-    },
-    tasks: [
-      { id: 'df1', title: 'Plan tomorrow’s top 3 tasks', duration: '10 min' },
-      { id: 'df2', title: 'Focus block free of distractions', duration: '45 min' },
-      { id: 'df3', title: 'Evening inbox zero sweep', duration: '15 min' },
-    ],
-  },
-  {
-    id: 2,
-    name: 'Body & Energy',
-    icon: '⚡',
-    palette: {
-      background: '#ECFDF5',
-      border: '#6EE7B7',
-      accent: '#10B981',
-    },
-    tasks: [
-      { id: 'be1', title: 'Hydrate with 8 glasses of water', duration: 'All day' },
-      { id: 'be2', title: 'Complete 6k steps or light cardio', duration: '20 min' },
-      { id: 'be3', title: 'Quick mobility or stretch break', duration: '10 min' },
-    ],
-  },
-  {
-    id: 3,
-    name: 'Mind & Balance',
-    icon: '🧘',
+    name: 'Daily Essentials',
+    icon: '🌟',
     palette: {
       background: '#F5F3FF',
       border: '#C4B5FD',
       accent: '#8B5CF6',
     },
     tasks: [
-      { id: 'mb1', title: 'Micro meditation reset', duration: '5 min' },
-      { id: 'mb2', title: 'Read 10 mindful pages', duration: '15 min' },
-      { id: 'mb3', title: 'Phone-free wind-down', duration: '30 min' },
-      { id: 'mb4', title: 'Gratitude journal entry', duration: '10 min' },
+      { id: 'habit_read', title: 'Read 40 pages of a book', duration: 'Today', icon: '📖' },
+      { id: 'habit_steps', title: 'Complete 5,000 steps', duration: 'Today', icon: '👣' },
+      { id: 'habit_water', title: 'Drink 3L of water', duration: 'Today', icon: '💧' },
+      { id: 'habit_journal', title: 'Write a journal entry', duration: '10 min', icon: '📝' },
+      { id: 'habit_meditate', title: 'Do a meditation session', duration: '15 min', icon: '🧘' },
     ],
   },
 ];
@@ -117,7 +89,7 @@ export default function UserPreferenceScreen({
         duration: task.duration,
         categoryId: category.id,
         categoryName: category.name,
-        icon: category.icon,
+        icon: task.icon,
         palette: category.palette,
       })),
     );
@@ -163,10 +135,14 @@ export default function UserPreferenceScreen({
 
     setIsSaving(true);
     try {
-      await saveHabitSelection(dateKey, {
-        categories: selectedCategoryIds,
-        tasks: selectedTasks,
-      });
+      await saveHabitSelection(
+        dateKey,
+        {
+          categories: selectedCategoryIds,
+          tasks: selectedTasks,
+        },
+        { propagateToFuture: true },
+      );
 
       Alert.alert('Habits Saved', `You selected ${selectedCount} tasks to track!`);
         router.replace({ pathname: '/(tabs)/(home)', params: { date: dateKey } });

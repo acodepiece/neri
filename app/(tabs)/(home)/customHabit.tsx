@@ -120,7 +120,7 @@ export default function CustomHabitScreen() {
       };
 
       console.log('  💾 Adding custom habit to today\'s selection:', updatedSelection);
-      await saveHabitSelection(dateKey, updatedSelection);
+      await saveHabitSelection(dateKey, updatedSelection, { propagateToFuture: false });
       console.log('  ✅ Custom habit added to today\'s habits!');
 
       // Small delay to ensure database write completes

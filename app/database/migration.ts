@@ -72,11 +72,15 @@ export async function migrateToDatabase(habitCategories: any[]): Promise<void> {
       }
 
       try {
-        await saveHabitSelection(dateKey, {
-          categories: selection.categories || [],
-          tasks: selection.tasks || [],
-          completed: selection.completed || [],
-        });
+        await saveHabitSelection(
+          dateKey,
+          {
+            categories: selection.categories || [],
+            tasks: selection.tasks || [],
+            completed: selection.completed || [],
+          },
+          { propagateToFuture: false },
+        );
         migratedCount++;
       } catch (error) {
         console.error(`Error migrating date ${dateKey}:`, error);
