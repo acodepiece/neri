@@ -3,7 +3,13 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import React, { useMemo, useState } from 'react';
 import { Alert } from 'react-native';
 import { Dimensions } from 'react-native';
-import { createCustomHabit, loadHabitSelection, saveHabitSelection, formatHabitDateKey } from '@/app/database/habitDb';
+import {
+  createCustomHabit,
+  loadHabitSelection,
+  saveHabitSelection,
+  formatHabitDateKey,
+  addHabitToFutureSelections,
+} from '@/app/database/habitDb';
 import {
     Animated,
     KeyboardAvoidingView,
@@ -112,16 +118,19 @@ export default function CustomHabitScreen() {
       console.log('  📋 Current selection:', currentSelection);
 
       // Add the new custom habit to today's selection
-      const updatedTasks = [...currentSelection.tasks, habitId];
+      const updatedTasks = Array.from(new Set([...currentSelection.tasks, habitId]));
       const updatedSelection = {
         ...currentSelection,
         tasks: updatedTasks,
-        categories: [...currentSelection.categories, 999], // Add custom category
+        categories: Array.from(new Set([...(currentSelection.categories ?? []), 999])),
       };
 
       console.log('  💾 Adding custom habit to today\'s selection:', updatedSelection);
       await saveHabitSelection(dateKey, updatedSelection, { propagateToFuture: false });
       console.log('  ✅ Custom habit added to today\'s habits!');
+
+      await addHabitToFutureSelections(habitId, dateKey);
+      console.log('  🔁 Synced custom habit to upcoming scheduled days');
 
       // Small delay to ensure database write completes
       await new Promise(resolve => setTimeout(resolve, 100));

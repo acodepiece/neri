@@ -39,6 +39,15 @@ export type HabitSelection = {
   completed?: string[];
 };
 
+export type HabitDefinition = {
+  id: string;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  category_id: number | null;
+  category_name: string | null;
+};
+
 export type SaveHabitSelectionOptions = {
   propagateToFuture?: boolean;
 };
@@ -215,6 +224,19 @@ export async function getCustomHabits(): Promise<any[]> {
   }
 }
 
+// 📚 Get all habit definitions (default + custom)
+export async function getHabitDefinitions(): Promise<HabitDefinition[]> {
+  const database = await getDatabase();
+  try {
+    return await database.getAllAsync<HabitDefinition>(
+      'SELECT id, name, description, icon, category_id, category_name FROM habits ORDER BY id',
+    );
+  } catch (error) {
+    console.error('❌ Error loading habit definitions:', error);
+    return [];
+  }
+}
+
 // 🗑️ Delete a custom habit
 export async function deleteCustomHabit(habitId: string): Promise<void> {
   try {
@@ -285,6 +307,53 @@ export async function saveHabitSelection(
     console.error('❌ Error saving habit selection:', error);
     console.error('   Stack:', error);
     throw error;
+  }
+}
+
+export async function addHabitToFutureSelections(
+  habitId: string,
+  startDate: string,
+): Promise<void> {
+  const database = await getDatabase();
+
+  try {
+    const futureDates = await database.getAllAsync<{ date: string }>(
+      'SELECT DISTINCT date FROM user_habits WHERE date > ? ORDER BY date LIMIT 120',
+      [startDate],
+    );
+
+    if (futureDates.length === 0) {
+      return;
+    }
+
+    let additions = 0;
+
+    await database.withTransactionAsync(async () => {
+      for (const { date } of futureDates) {
+        const existing = await database.getFirstAsync<{ id: number }>(
+          'SELECT id FROM user_habits WHERE habit_id = ? AND date = ? LIMIT 1',
+          [habitId, date],
+        );
+
+        if (existing) {
+          continue;
+        }
+
+        await database.runAsync(
+          'INSERT INTO user_habits (habit_id, date, completed) VALUES (?, ?, 0)',
+          [habitId, date],
+        );
+        additions += 1;
+      }
+    });
+
+    if (additions > 0) {
+      console.log(
+        `  🔁 Added custom habit ${habitId} to ${additions} future date${additions === 1 ? '' : 's'}`,
+      );
+    }
+  } catch (error) {
+    console.warn('⚠️ Unable to append habit to future selections', error);
   }
 }
 
@@ -470,6 +539,23 @@ export async function toggleHabitCompletion(
     );
   } catch (error) {
     console.error('Error toggling habit completion:', error);
+    throw error;
+  }
+}
+
+export async function resetAllHabitProgress(): Promise<void> {
+  const database = await getDatabase();
+
+  try {
+    await database.withTransactionAsync(async () => {
+      console.log('\n🧹 [RESET] Clearing habit progress data...');
+      await database.runAsync('DELETE FROM user_habits');
+      await database.runAsync('DELETE FROM habit_logs');
+      await database.runAsync('DELETE FROM streaks');
+    });
+    console.log('  ✅ Habit progress reset complete');
+  } catch (error) {
+    console.error('❌ Failed to reset habit progress', error);
     throw error;
   }
 }

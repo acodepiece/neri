@@ -62,7 +62,7 @@ Automatically migrates existing AsyncStorage data to SQLite:
 #### User Preference Screen (`app/(onboarding)/user-preference/UserPreferenceScreen.tsx`)
 - ✅ Uses `saveHabitSelection()` from database
 
-#### Explore Screen (`app/(tabs)/(explore)/index.tsx`)
+#### Statistics Screen (`app/(tabs)/(statistics)/index.tsx`)
 - ✅ Uses `loadHabitSelection()` from database
 - ✅ Uses `formatHabitDateKey()` from database
 

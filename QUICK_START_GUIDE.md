@@ -38,7 +38,7 @@ npm run ios
 - `app/(tabs)/(home)/index.tsx` - Home screen using database
 - `app/(onboarding)/user-preference/select-habits.tsx` - Selection screen
 - `app/(onboarding)/user-preference/UserPreferenceScreen.tsx` - Preference screen
-- `app/(tabs)/(explore)/index.tsx` - Explore screen
+- `app/(tabs)/(statistics)/index.tsx` - Statistics screen
 - `app/(tabs)/(streak)/index.tsx` - Streak screen
 
 ### Deprecated (but kept)

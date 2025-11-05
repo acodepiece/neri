@@ -56,7 +56,7 @@ Documentation/
 app/
 ├── _layout.tsx                                    # Added DB initialization
 ├── (tabs)/(home)/index.tsx                       # Updated to use DB
-├── (tabs)/(explore)/index.tsx                    # Updated to use DB
+├── (tabs)/(statistics)/index.tsx                # Updated to use DB
 ├── (tabs)/(streak)/index.tsx                     # Updated to use DB
 └── (onboarding)/user-preference/
     ├── select-habits.tsx                         # Updated to use DB

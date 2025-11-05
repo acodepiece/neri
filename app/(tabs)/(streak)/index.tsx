@@ -1,23 +1,16 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { useFocusEffect } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  FlatList,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  useWindowDimensions,
-  View,
-} from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { HABIT_CATEGORIES } from '../../(onboarding)/user-preference/UserPreferenceScreen';
 import {
   formatHabitDateKey,
   loadAllHabitSelections,
   type HabitSelection,
 } from '@/app/database/habitDb';
+import { HABIT_CATEGORIES } from '../../(onboarding)/user-preference/UserPreferenceScreen';
+import ActivityHeatmap from './heatmap';
 
 type RangePreset = 'week' | 'month' | 'year' | 'all';
 
@@ -41,10 +34,14 @@ const borderColor = '#E6E0D5';
 const textPrimary = '#1B1B1C';
 const textMuted = '#7A726C';
 const accent = '#FF7A00';
-const heatmapBaseColor = '#F3F1EB';
-const heatmapPalette = ['#E5DFD2', '#D5C8A9', '#C0AE7C', '#9E8A52', '#6F5C33'];
-const heatmapActiveFill = '#FF8C42';
-const heatmapActiveRing = '#FFE1C4';
+const heatmapBaseColor = '#E5E7EB';
+const heatmapPalette = ['#DCFCE7', '#BBF7D0', '#86EFAC', '#4ADE80', '#22C55E'];
+const heatmapActiveFill = '#16A34A';
+const heatmapActiveRing = '#BBF7D0';
+const dayLabels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+const weekInMs = 7 * 24 * 60 * 60 * 1000;
+const heatmapFutureWeekPadding = 12;
+const heatmapMinimumWeeks = 36;
 
 const startOfDay = (input: Date) =>
   new Date(input.getFullYear(), input.getMonth(), input.getDate());
@@ -58,7 +55,8 @@ const addDays = (date: Date, amount: number) => {
 const startOfWeek = (date: Date) => {
   const next = startOfDay(date);
   const day = next.getDay();
-  return addDays(next, -day);
+  const diff = day === 0 ? -6 : 1 - day; // Monday as first day
+  return addDays(next, diff);
 };
 
 const startOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1);
@@ -140,25 +138,32 @@ const calculateCurrentStreak = (dateKeys: string[]): number => {
   return streak;
 };
 
-const getHeatmapIntensity = (completions: number) => {
-  if (completions === 0) {
+const getHeatmapIntensity = (completions: number, scheduled: number): number | null => {
+  if (scheduled === 0) {
+    return null;
+  }
+
+  const ratio = completions / scheduled;
+  if (ratio <= 0) {
     return 0;
   }
-  if (completions === 1) {
+  if (ratio <= 0.25) {
     return 1;
   }
-  if (completions <= 3) {
+  if (ratio <= 0.5) {
     return 2;
   }
-  if (completions <= 5) {
+  if (ratio <= 0.75) {
     return 3;
   }
-  return 4;
+  if (ratio < 1) {
+    return 4;
+  }
+  return 5;
 };
 
 export default function StreakScreen() {
   const { width } = useWindowDimensions();
-  const heatmapColumns = Math.max(1, Math.floor(width / 18));
   const [preset, setPreset] = useState<RangePreset>('week');
   const [anchorDate, setAnchorDate] = useState<Date>(() =>
     alignAnchor('week', startOfDay(new Date())),
@@ -201,65 +206,93 @@ export default function StreakScreen() {
   );
 
   const today = startOfDay(new Date());
-  const alignedAnchor = useMemo(() => alignAnchor(preset, anchorDate), [preset, anchorDate]);
+  const firstHabitDate = useMemo(() => {
+    if (!records.length) {
+      return today;
+    }
+    const firstTracked =
+      records.find((record) => record.selection.tasks.length > 0) ?? records[0];
+    return startOfDay(firstTracked.date);
+  }, [records, today]);
 
-  const range = useMemo(() => {
+  const hasInitializedAnchor = useRef(false);
+
+  useEffect(() => {
+    if (!records.length || hasInitializedAnchor.current) {
+      return;
+    }
+    setAnchorDate(alignAnchor(preset, firstHabitDate));
+    hasInitializedAnchor.current = true;
+  }, [records, preset, firstHabitDate]);
+
+  const earliestAnchor = useMemo(
+    () => alignAnchor(preset, firstHabitDate),
+    [preset, firstHabitDate],
+  );
+
+  const alignedAnchor = useMemo(() => {
+    const aligned = alignAnchor(preset, anchorDate);
+    if (aligned.getTime() < earliestAnchor.getTime()) {
+      return earliestAnchor;
+    }
+    return aligned;
+  }, [preset, anchorDate, earliestAnchor]);
+
+  const rangeStartMs = useMemo(() => {
+    if (preset === 'week') {
+      return startOfWeek(alignedAnchor).getTime();
+    }
+    if (preset === 'month') {
+      return startOfMonth(alignedAnchor).getTime();
+    }
+    if (preset === 'year') {
+      return startOfYear(alignedAnchor).getTime();
+    }
     if (preset === 'all') {
-      if (!records.length) {
-        return { start: alignedAnchor, end: alignedAnchor };
-      }
-      return {
-        start: records[0].date,
-        end: records[records.length - 1].date,
-      };
+      const firstDate = records.length ? records[0].date : alignedAnchor;
+      return startOfDay(firstDate).getTime();
     }
+    return alignedAnchor.getTime();
+  }, [alignedAnchor, preset, records]);
 
-    switch (preset) {
-      case 'week':
-        return {
-          start: alignedAnchor,
-          end: endOfWeek(alignedAnchor),
-        };
-      case 'month':
-        return {
-          start: alignedAnchor,
-          end: endOfMonth(alignedAnchor),
-        };
-      case 'year':
-        return {
-          start: alignedAnchor,
-          end: endOfYear(alignedAnchor),
-        };
-      default:
-        return { start: alignedAnchor, end: alignedAnchor };
+  const rangeEndMs = useMemo(() => {
+    if (preset === 'week') {
+      return endOfWeek(alignedAnchor).getTime();
     }
-  }, [preset, alignedAnchor, records]);
+    if (preset === 'month') {
+      return endOfMonth(alignedAnchor).getTime();
+    }
+    if (preset === 'year') {
+      return endOfYear(alignedAnchor).getTime();
+    }
+    if (preset === 'all') {
+      const lastDate = records.length ? records[records.length - 1].date : alignedAnchor;
+      return startOfDay(lastDate).getTime();
+    }
+    return alignedAnchor.getTime();
+  }, [alignedAnchor, preset, records]);
 
   const canNavigateBackward = useMemo(() => {
     if (preset === 'all') {
       return false;
     }
-    if (!records.length) {
-      return true;
-    }
-    const earliest = records[0].date.getTime();
-    return range.start.getTime() > earliest;
-  }, [preset, range.start, records]);
+    return rangeStartMs > earliestAnchor.getTime();
+  }, [preset, rangeStartMs, earliestAnchor]);
 
   const canNavigateForward = useMemo(() => {
     if (preset === 'all') {
       return false;
     }
-    return range.end.getTime() < today.getTime();
-  }, [preset, range.end, today]);
+    return rangeEndMs < today.getTime();
+  }, [preset, rangeEndMs, today]);
 
   const filteredRecords = useMemo(() => {
     return records.filter(
       (record) =>
-        record.date.getTime() >= range.start.getTime() &&
-        record.date.getTime() <= range.end.getTime(),
+        record.date.getTime() >= rangeStartMs &&
+        record.date.getTime() <= rangeEndMs,
     );
-  }, [records, range]);
+  }, [records, rangeStartMs, rangeEndMs]);
 
   const completionDatesByHabit = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -313,7 +346,92 @@ export default function StreakScreen() {
     }, 0);
   }, [filteredRecords]);
 
-  const completionRate = totalScheduled === 0 ? null : (totalCompletions / totalScheduled) * 100;
+  const completionRate = useMemo(() => {
+    if (totalScheduled === 0) {
+      return null;
+    }
+    return (totalCompletions / totalScheduled) * 100;
+  }, [totalCompletions, totalScheduled]);
+
+  const heatmapWeeks = useMemo(() => {
+    const recordMap = new Map(records.map((record) => [record.dateKey, record.selection]));
+    const latestActiveRecord = [...records]
+      .slice()
+      .reverse()
+      .find((record) => (record.selection.completed?.length ?? 0) > 0);
+    const latestActiveKey = latestActiveRecord?.dateKey ?? null;
+
+    const start = startOfWeek(firstHabitDate);
+    const activeWeekSpan = Math.ceil((endOfWeek(today).getTime() - start.getTime()) / weekInMs) + 1;
+    const totalWeeks = Math.max(activeWeekSpan + heatmapFutureWeekPadding, heatmapMinimumWeeks);
+
+    const weeks: Array<{
+      weekStart: Date;
+      days: Array<{
+        date: Date;
+        dateKey: string;
+        intensity: number | null;
+        isLatestActive: boolean;
+        isFuture: boolean;
+        isInRange: boolean;
+      }>;
+    }> = [];
+
+    for (let i = 0; i < totalWeeks; i += 1) {
+      const weekStart = addDays(start, i * 7);
+      const days = dayLabels.map((_, index) => {
+        const date = addDays(weekStart, index);
+        const dateKey = formatHabitDateKey(date);
+        const selection = recordMap.get(dateKey);
+        const completions = selection?.completed?.length ?? 0;
+        const scheduled = selection?.tasks.length ?? 0;
+        const intensity = getHeatmapIntensity(completions, scheduled);
+        const isFuture = date.getTime() > today.getTime();
+        const isInRange = date.getTime() >= rangeStartMs && date.getTime() <= rangeEndMs;
+
+        return {
+          date,
+          dateKey,
+          intensity,
+          isLatestActive: latestActiveKey === dateKey,
+          isFuture,
+          isInRange,
+        };
+      });
+
+      weeks.push({ weekStart, days });
+    }
+
+    return weeks;
+  }, [records, firstHabitDate, today, rangeStartMs, rangeEndMs]);
+
+  const heatmapValues = useMemo(() => {
+    const values: Array<number | null> = [];
+    heatmapWeeks.forEach((week, weekIndex) => {
+      week.days.forEach((day, dayIndex) => {
+        if (!day.isInRange || day.isFuture || day.intensity === null) {
+          values.push(null);
+          return;
+        }
+
+        const normalized = day.intensity <= 0 ? 0 : day.intensity - 1;
+        values.push(Math.max(0, Math.min(heatmapPalette.length - 1, normalized)));
+      });
+    });
+    return values;
+  }, [heatmapWeeks]);
+
+  const heatmapHighlights = useMemo(() => {
+    const highlights: number[] = [];
+    heatmapWeeks.forEach((week, weekIndex) => {
+      week.days.forEach((day, dayIndex) => {
+        if (day.isLatestActive) {
+          highlights.push(weekIndex * dayLabels.length + dayIndex);
+        }
+      });
+    });
+    return highlights;
+  }, [heatmapWeeks]);
 
   const topHabits = useMemo(() => {
     const counts = new Map<string, number>();
@@ -332,7 +450,7 @@ export default function StreakScreen() {
         }
         const completionDates = completionDatesByHabit.get(habitId) ?? [];
         const streakDays = calculateCurrentStreak(completionDates);
-        const rate = totalScheduled === 0 ? 0 : (count / filteredRecords.length) * 100;
+        const rate = totalCompletions === 0 ? 0 : (count / filteredRecords.length) * 100;
         return {
           habitId,
           title: meta.title,
@@ -381,69 +499,12 @@ export default function StreakScreen() {
     totalScheduled,
   ]);
 
-  const heatmapDays = useMemo(() => {
-    const days: Array<{
-      date: Date;
-      dateKey: string;
-      intensity: number;
-      completions: number;
-      scheduled: number;
-      hasActivity: boolean;
-      isLatestActive: boolean;
-    }> = [];
-
-    const todayKey = formatHabitDateKey(today);
-    const recordMap = new Map(records.map((record) => [record.dateKey, record.selection]));
-
-    const latestActiveRecord = [...records]
-      .slice()
-      .reverse()
-      .find((record) => (record.selection.completed?.length ?? 0) > 0);
-    const latestActiveKey = latestActiveRecord?.dateKey ?? null;
-
-    const totalDays = 7 * 12; // 12 weeks
-    for (let index = totalDays - 1; index >= 0; index -= 1) {
-      const date = addDays(today, -index);
-      const dateKey = formatHabitDateKey(date);
-      const selection = recordMap.get(dateKey);
-      const completions = selection?.completed?.length ?? 0;
-      const scheduled = selection?.tasks.length ?? 0;
-      const intensity = scheduled === 0 ? 0 : getHeatmapIntensity(completions);
-      const hasActivity = completions > 0;
-      const isLatestActive = latestActiveKey === dateKey;
-
-      days.push({
-        date,
-        dateKey,
-        intensity,
-        completions,
-        scheduled,
-        hasActivity,
-        isLatestActive,
-      });
-    }
-
-    if (!days.some((day) => day.dateKey === todayKey)) {
-      days.push({
-        date: today,
-        dateKey: todayKey,
-        intensity: 0,
-        completions: 0,
-        scheduled: 0,
-        hasActivity: false,
-        isLatestActive: latestActiveKey === todayKey,
-      });
-    }
-
-    return days;
-  }, [records, today]);
-
   const handlePresetSelect = useCallback(
     (nextPreset: RangePreset) => {
       setPreset(nextPreset);
-      setAnchorDate(alignAnchor(nextPreset, today));
+      setAnchorDate(alignAnchor(nextPreset, firstHabitDate));
     },
-    [today],
+    [firstHabitDate],
   );
 
   const handleNavigate = useCallback(
@@ -465,34 +526,13 @@ export default function StreakScreen() {
             return current;
           }
         }
+        if (aligned.getTime() < earliestAnchor.getTime()) {
+          return current;
+        }
         return aligned;
       });
     },
-    [preset, today],
-  );
-
-  const renderHeatmapCell = useCallback(
-    ({ item }: { item: (typeof heatmapDays)[number] }) => {
-      const backgroundColor = item.hasActivity
-        ? heatmapPalette[item.intensity]
-        : heatmapBaseColor;
-
-      return (
-        <View style={styles.heatmapCellWrapper}>
-          {item.isLatestActive && <View style={styles.heatmapCellHalo} />}
-          <View
-            style={[
-              styles.heatmapCell,
-              {
-                backgroundColor: item.isLatestActive ? heatmapActiveFill : backgroundColor,
-                borderColor: item.isLatestActive ? heatmapActiveRing : 'transparent',
-              },
-            ]}
-          />
-        </View>
-      );
-    },
-    [],
+    [preset, today, earliestAnchor],
   );
 
   if (isLoading) {
@@ -509,7 +549,7 @@ export default function StreakScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.segmentedControl}>
+        {/* <View style={styles.segmentedControl}>
           {(['week', 'month', 'year', 'all'] as RangePreset[]).map((value) => (
             <Pressable
               key={value}
@@ -538,7 +578,7 @@ export default function StreakScreen() {
               color={canNavigateBackward ? textPrimary : '#C8C3BC'}
             />
           </Pressable>
-          <Text style={styles.rangeLabel}>{formatRangeLabel(range.start, range.end)}</Text>
+          <Text style={styles.rangeLabel}>{formatRangeLabel(new Date(rangeStartMs), new Date(rangeEndMs))}</Text>
           <Pressable
             onPress={() => handleNavigate(1)}
             disabled={!canNavigateForward}
@@ -550,8 +590,11 @@ export default function StreakScreen() {
               color={canNavigateForward ? textPrimary : '#C8C3BC'}
             />
           </Pressable>
-        </View>
+        </View> */}
 
+<View>
+  <Text style={{ fontSize: 24, fontWeight: 'bold', color: textPrimary }}>Track Your Streak</Text>
+</View>
         <View style={styles.summaryRow}>
           <View style={styles.summaryCard}>
             <Text style={styles.summaryLabel}>Completions</Text>
@@ -569,14 +612,35 @@ export default function StreakScreen() {
 
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Activity Heatmap</Text>
-          <FlatList
-            data={heatmapDays}
-            renderItem={renderHeatmapCell}
-            keyExtractor={(item) => item.dateKey}
-            numColumns={heatmapColumns}
-            columnWrapperStyle={styles.heatmapRow}
-            scrollEnabled={false}
-          />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.heatmapContent}>
+              <View style={styles.heatmapDayLabels}>
+                {dayLabels.map((label, index) => (
+                  <Text key={`label-${label}-${index}`} style={styles.heatmapDayLabel}>
+                    {label}
+                  </Text>
+                ))}
+              </View>
+              <ActivityHeatmap
+                style={styles.heatmapGrid}
+                weeks={heatmapWeeks.length}
+                days={dayLabels.length}
+                values={heatmapValues}
+                palette={heatmapPalette}
+                emptyColor={heatmapBaseColor}
+                highlightIndices={heatmapHighlights}
+                highlightColor={heatmapActiveFill}
+                highlightBorderColor={heatmapActiveRing}
+              />
+            </View>
+          </ScrollView>
+          <View style={styles.heatmapLegend}>
+            <Text style={styles.heatmapLegendLabel}>Less</Text>
+            {[heatmapBaseColor, ...heatmapPalette].map((color, index) => (
+              <View key={`legend-${index}`} style={[styles.heatmapLegendSwatch, { backgroundColor: color }]} />
+            ))}
+            <Text style={styles.heatmapLegendLabel}>More</Text>
+          </View>
         </View>
 
         <View style={styles.sectionCard}>
@@ -732,30 +796,45 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: textPrimary,
   },
-  heatmapRow: {
-    gap: 6,
-    marginBottom: 6,
-  },
-  heatmapCellWrapper: {
-    width: 18,
-    height: 18,
+  heatmapLegend: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
+    justifyContent: 'flex-end',
+    gap: 4,
+    marginTop: 12,
   },
-  heatmapCell: {
+  heatmapLegendLabel: {
+    fontSize: 11,
+    color: textMuted,
+    fontWeight: '500',
+  },
+  heatmapLegendSwatch: {
     width: 12,
     height: 12,
-    borderRadius: 4,
-    borderWidth: 1,
+    borderRadius: 3,
+    borderWidth: 0.5,
+    borderColor: borderColor,
   },
-  heatmapCellHalo: {
-    position: 'absolute',
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: heatmapActiveRing,
-    opacity: 0.35,
+  heatmapContent: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'flex-start',
+    paddingVertical: 12,
+  },
+  heatmapDayLabels: {
+    justifyContent: 'flex-start',
+    gap: 3,
+    paddingTop: 1,
+  },
+  heatmapDayLabel: {
+    fontSize: 10,
+    color: textMuted,
+    fontWeight: '500',
+    height: 12,
+    lineHeight: 12,
+  },
+  heatmapGrid: {
+    gap: 3,
   },
   habitList: {
     gap: 16,

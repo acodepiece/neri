@@ -14,9 +14,8 @@ import { useFocusEffect } from 'expo-router';
 import { Feather } from '@expo/vector-icons';
 import { Circle, Svg } from 'react-native-svg';
 
-import { HABIT_CATEGORIES } from '../../(onboarding)/user-preference/UserPreferenceScreen';
-import { formatHabitDateKey, loadHabitSelection } from '@/app/database/habitDb';
-import type { HabitSelection } from '@/app/database/habitDb';
+import { formatHabitDateKey, getHabitDefinitions, loadHabitSelection } from '@/app/database/habitDb';
+import type { HabitDefinition, HabitSelection } from '@/app/database/habitDb';
 
 type CalendarDay = {
   key: string;
@@ -58,29 +57,58 @@ function useWeekDays(): CalendarDay[] {
   }, []);
 }
 
-const ExploreScreen = () => {
+const StatisticsScreen = () => {
   const weekDays = useWeekDays();
   const { width: windowWidth } = useWindowDimensions();
   const [selectedDate, setSelectedDate] = useState<Date>(() => startOfDay(new Date()));
   const [selectedSelection, setSelectedSelection] = useState<HabitSelection | null>(null);
   const [dateCompletions, setDateCompletions] = useState<Map<string, { total: number; completed: number }>>(new Map());
+  const [habitDefinitions, setHabitDefinitions] = useState<HabitDefinition[]>([]);
 
-  const allHabits = useMemo<HabitCard[]>(() => {
-    return HABIT_CATEGORIES.flatMap((category) =>
-      category.tasks.map((task) => ({
-        id: task.id,
-        title: task.title,
-        frequency: task.duration,
-        icon: category.icon,
-      })),
-    );
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const loadDefinitions = async () => {
+        try {
+          const definitions = await getHabitDefinitions();
+          if (isActive) {
+            setHabitDefinitions(definitions);
+          }
+        } catch (error) {
+          console.error('❌ Error loading habit definitions:', error);
+        }
+      };
+
+      loadDefinitions();
+
+      return () => {
+        isActive = false;
+      };
+    }, []),
+  );
 
   const habitLookup = useMemo(() => {
     const map = new Map<string, HabitCard>();
-    allHabits.forEach((habit) => map.set(habit.id, habit));
+    habitDefinitions.forEach((habit) => {
+      const description = habit.description?.trim();
+      const frequency =
+        description && description.length > 0
+          ? description
+          : habit.category_id === 999
+          ? 'Custom habit'
+          : 'Daily';
+      const icon = habit.icon && habit.icon.length > 0 ? habit.icon : '✨';
+
+      map.set(habit.id, {
+        id: habit.id,
+        title: habit.name,
+        frequency,
+        icon,
+      });
+    });
     return map;
-  }, [allHabits]);
+  }, [habitDefinitions]);
 
   const loadSelectionForDate = useCallback(async (date: Date) => {
     return loadHabitSelection(formatHabitDateKey(date));
@@ -690,4 +718,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-export default ExploreScreen;
+export default StatisticsScreen;
